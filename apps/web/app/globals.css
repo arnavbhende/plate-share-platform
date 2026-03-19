@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #2e7d32;
+  --primary-dark: #1b5e20;
+  --primary-light: #4caf50;
+  --bg-light: #e8f5e9;
+  --background: #f3f4f6;
+  --foreground: #111827;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-light: var(--primary-light);
+  --color-bg-light: var(--bg-light);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-be-vietnam-pro);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), sans-serif;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-be-vietnam-pro), sans-serif;
+}
