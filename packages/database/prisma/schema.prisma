@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// NOTE: SQLite does not support enums. We use String fields with validation in code.
+// Role: "DONOR" | "NGO" | "VOLUNTEER"
+// DonationStatus: "PENDING" | "ACCEPTED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED"
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String
+  role           String   @default("DONOR")
+  phone          String?
+  address        String?
+  avatar         String?
+  vehicle        String?
+  availability   String?
+  preferences    String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  donationsMade  Donation[]     @relation("DonorToDonation")
+  deliveries     Donation[]     @relation("VolunteerToDonation")
+  ngoReceiving   Donation[]     @relation("NgoToDonation")
+  notifications  Notification[]
+}
+
+model Donation {
+  id                 String   @id @default(cuid())
+  title              String
+  category           String
+  dietary            String?
+  description        String?
+  servings           Int
+  packaging          String   @default("[]")
+  shelfLife          String?
+  handling           String?
+  pickupTime         DateTime
+  pickupSlot         String?
+  location           String
+  locationName       String?
+  dropLocation       String?
+  image              String?
+  pickupInstructions String?
+  status             String   @default("PENDING")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  donorId     String
+  donor       User   @relation("DonorToDonation", fields: [donorId], references: [id])
+
+  volunteerId String?
+  volunteer   User?  @relation("VolunteerToDonation", fields: [volunteerId], references: [id])
+
+  ngoId       String?
+  ngo         User?  @relation("NgoToDonation", fields: [ngoId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  subtitle  String
+  icon      String   @default("📦")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}

@@ -1,6 +1,18 @@
 {
+  "name": "plate-share-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=web"
+  },
   "dependencies": {
-    "@prisma/client": "^7.6.0",
-    "prisma": "^7.6.0"
+    "@prisma/client": "^6.0.0",
+    "prisma": "^6.0.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5"
   }
 }

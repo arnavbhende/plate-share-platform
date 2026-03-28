@@ -110,6 +110,51 @@ export default function PostDonationPage() {
   const [form, setForm] = useState<DonationFormState>(initialState);
   const [selectedDietary, setSelectedDietary] = useState<DietaryType>(initialState.dietary);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState("");
+
+  async function handleConfirmPost() {
+    setPosting(true);
+    setPostError("");
+    try {
+      const pickupTime = form.pickupDate
+        ? new Date(form.pickupDate + "T12:00:00").toISOString()
+        : new Date().toISOString();
+
+      const res = await fetch("/api/donations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: form.foodName,
+          category: form.category,
+          dietary: form.dietary,
+          description: form.description,
+          servings: form.servings,
+          packaging: form.packaging,
+          shelfLife: form.shelfLife === "custom" ? form.customShelfLife + "h" : form.shelfLife,
+          handling: form.handling,
+          pickupTime,
+          pickupSlot: form.pickupSlot,
+          location: form.locationAddress,
+          locationName: form.locationName,
+          pickupInstructions: form.pickupInstructions,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setPostError(data.error || "Failed to post donation");
+        setPosting(false);
+        return;
+      }
+
+      setShowSuccess(true);
+    } catch {
+      setPostError("Network error. Please try again.");
+    } finally {
+      setPosting(false);
+    }
+  }
 
   const dateOptions = useMemo(() => {
     const formatterDay = new Intl.DateTimeFormat("en-US", { weekday: "short" });
@@ -628,12 +673,19 @@ export default function PostDonationPage() {
                 </div>
               </div>
 
+              {postError && (
+                <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                  {postError}
+                </div>
+              )}
+
               <button
                 type="button"
-                onClick={() => setShowSuccess(true)}
-                className="w-full rounded-2xl bg-[#2E7D32] py-4 text-lg font-semibold text-white shadow-lg transition-all duration-200 hover:scale-[1.01] hover:bg-[#1B5E20]"
+                onClick={handleConfirmPost}
+                disabled={posting}
+                className="w-full rounded-2xl bg-[#2E7D32] py-4 text-lg font-semibold text-white shadow-lg transition-all duration-200 hover:scale-[1.01] hover:bg-[#1B5E20] disabled:opacity-50"
               >
-                Confirm & Post
+                {posting ? "Posting..." : "Confirm & Post"}
               </button>
 
               <div className="text-center">
