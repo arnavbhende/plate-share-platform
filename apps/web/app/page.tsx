@@ -62,7 +62,7 @@ export default function Home() {
               </Link>
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </main>
   );
