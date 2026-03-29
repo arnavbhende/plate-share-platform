@@ -1,9 +1,41 @@
 "use client";
 import { Utensils, Building2, Bike } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+
+type LocalUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "DONOR" | "VOLUNTEER" | "NGO";
+};
 
 export default function RoleSelect() {
   const router = useRouter();
+  const [user, setUser] = useState<LocalUser | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("user");
+    if (!raw) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      setUser(JSON.parse(raw));
+    } catch {
+      localStorage.removeItem("user");
+      router.push("/login");
+    }
+  }, [router]);
+
+  const roleRoute = useMemo(() => {
+    if (!user) return "/role-select";
+    if (user.role === "DONOR") return "/donor/dashboard";
+    if (user.role === "VOLUNTEER") return "/volunteer/dashboard";
+    if (user.role === "NGO") return "/ngo/dashboard";
+    return "/role-select";
+  }, [user]);
 
   const roles = [
     {
@@ -36,10 +68,23 @@ export default function RoleSelect() {
           <h1 className="font-heading text-3xl font-bold tracking-tight text-gray-900">
             Choose your <span className="text-[#2E7D32]">Impact</span>
           </h1>
+          {user && (
+            <p className="text-sm font-semibold text-[#2E7D32]">
+              Logged in as {user.name} ({user.role})
+            </p>
+          )}
           <p className="text-sm leading-6 text-gray-600">
             Pick your role to start making food donation faster, safer, and more meaningful.
           </p>
         </header>
+
+        <button
+          type="button"
+          onClick={() => router.push(roleRoute)}
+          className="mb-5 w-full rounded-2xl bg-[#2E7D32] px-4 py-3 text-sm font-semibold text-white shadow-md"
+        >
+          Continue as {user?.role || "USER"}
+        </button>
 
         <section className="space-y-5">
           {roles.map((role) => {

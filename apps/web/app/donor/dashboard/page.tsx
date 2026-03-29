@@ -37,18 +37,22 @@ export default function DonorDashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        // Fetch current user
-        const meRes = await fetch("/api/auth/me");
-        if (meRes.ok) {
-          const meData = await meRes.json();
-          setUser(meData.user);
+        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (!localUser?.id) {
+          setLoading(false);
+          return;
+        }
 
-          // Fetch this donor's donations
-          const donRes = await fetch(`/api/donations?donorId=${meData.user.id}`);
-          if (donRes.ok) {
-            const donData = await donRes.json();
-            setDonations(donData.donations);
-          }
+        setUser(localUser);
+
+        const donRes = await fetch("/api/donations", {
+          headers: {
+            "x-user": JSON.stringify(localUser),
+          },
+        });
+        if (donRes.ok) {
+          const donData = await donRes.json();
+          setDonations(donData.donations || []);
         }
       } catch (err) {
         console.error("Failed to load dashboard:", err);
@@ -60,15 +64,15 @@ export default function DonorDashboardPage() {
   }, []);
 
   const activeDonations = donations.filter(
-    (d) => d.status === "PENDING" || d.status === "ACCEPTED" || d.status === "IN_TRANSIT"
+    (d) => d.status === "OPEN" || d.status === "ACCEPTED" || d.status === "PICKED"
   );
 
   const recentDonations = donations.slice(0, 5);
 
   const statusConfig: Record<string, { label: string; classes: string }> = {
-    PENDING: { label: "PENDING", classes: "bg-[#F2F8F2] text-[#2E7D32]" },
+    OPEN: { label: "OPEN", classes: "bg-[#F2F8F2] text-[#2E7D32]" },
     ACCEPTED: { label: "ACCEPTED", classes: "bg-[#E8F5E9] text-[#1B5E20]" },
-    IN_TRANSIT: { label: "IN TRANSIT", classes: "bg-amber-50 text-amber-700" },
+    PICKED: { label: "PICKED", classes: "bg-amber-50 text-amber-700" },
     DELIVERED: { label: "DELIVERED", classes: "bg-emerald-50 text-emerald-700" },
     CANCELLED: { label: "CANCELLED", classes: "bg-red-50 text-red-600" },
   };
@@ -133,6 +137,19 @@ export default function DonorDashboardPage() {
             </div>
           </div>
         </Card>
+
+        {donations.length === 0 && (
+          <Card className="rounded-2xl p-8 text-center shadow-md">
+            <p className="text-lg font-semibold text-gray-900">No donations yet</p>
+            <p className="mt-1 text-sm text-gray-500">Post your first donation</p>
+            <Link
+              href="/donor/post-donation"
+              className="mt-4 inline-flex rounded-2xl bg-[#2E7D32] px-4 py-2 text-sm font-semibold text-white"
+            >
+              Post your first donation
+            </Link>
+          </Card>
+        )}
 
         {/* Active Donations */}
         <section className="space-y-4">

@@ -8,11 +8,11 @@
   "scripts": {
     "dev": "npm run dev --workspace=web"
   },
-  "dependencies": {
-    "@prisma/client": "^6.0.0",
-    "prisma": "^6.0.0"
-  },
   "devDependencies": {
     "dotenv": "^16.4.5"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0"
   }
 }

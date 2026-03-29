@@ -20,7 +20,7 @@ const steps = ["Accepted", "Picked", "Delivered"];
 
 function getStepIndex(status: string) {
   if (status === "ACCEPTED") return 0;
-  if (status === "IN_TRANSIT") return 1;
+  if (status === "PICKED") return 1;
   if (status === "DELIVERED") return 2;
   return 0;
 }
@@ -36,10 +36,20 @@ export default function AssignedPickups() {
 
   async function fetchAssigned() {
     try {
-      const res = await fetch("/api/donations?status=ACCEPTED,IN_TRANSIT");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!user?.id) {
+        setPickups([]);
+        return;
+      }
+
+      const res = await fetch("/api/volunteer/assigned", {
+        headers: {
+          "x-user": JSON.stringify(user),
+        },
+      });
       if (res.ok) {
         const data = await res.json();
-        setPickups(data.donations);
+        setPickups(data.pickups || []);
       }
     } catch (err) {
       console.error("Failed:", err);
@@ -190,25 +200,13 @@ export default function AssignedPickups() {
 
                   {/* Actions */}
                   <div className="mt-auto">
-                    {pickup.status === "ACCEPTED" ? (
-                      <Button
-                        onClick={() => handleUpdateStatus(pickup.id, "IN_TRANSIT")}
-                        disabled={updating === pickup.id}
-                        className="py-3 text-sm font-bold"
-                      >
-                        {updating === pickup.id ? "Updating..." : "Mark as Picked Up"}
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => handleUpdateStatus(pickup.id, "DELIVERED")}
-                        disabled={updating === pickup.id}
-                        className="py-3 text-sm font-bold"
-                      >
-                        {updating === pickup.id
-                          ? "Marking..."
-                          : "Mark as Delivered ✓"}
-                      </Button>
-                    )}
+                    <Button
+                      onClick={() => handleUpdateStatus(pickup.id, "DELIVERED")}
+                      disabled={updating === pickup.id}
+                      className="py-3 text-sm font-bold"
+                    >
+                      {updating === pickup.id ? "Updating..." : "Mark as Delivered ✓"}
+                    </Button>
                   </div>
                 </div>
               </Card>

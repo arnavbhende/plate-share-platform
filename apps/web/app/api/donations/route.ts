@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserFromRequest } from "@/lib/auth";
 import { createDonationSchema } from "@/lib/validations";
-import { unauthorized, forbidden, validationError, serverError } from "@/lib/errors";
+import { badRequest, validationError, serverError } from "@/lib/errors";
 
 /**
  * GET /api/donations — List donations with optional filters
@@ -10,31 +9,13 @@ import { unauthorized, forbidden, validationError, serverError } from "@/lib/err
  */
 export async function GET(req: Request) {
   try {
-    const user = await getUserFromRequest();
-    if (!user) return unauthorized();
-
-    const { searchParams } = new URL(req.url);
-    const where: Record<string, unknown> = {};
-
-    const statusParam = searchParams.get("status");
-    if (statusParam) {
-      const statuses = statusParam.split(",");
-      where.status = { in: statuses };
+    const user = JSON.parse(req.headers.get("x-user") || "{}");
+    if (!user?.id) {
+      return badRequest("Missing user in x-user header");
     }
 
-    const donorId = searchParams.get("donorId");
-    if (donorId) where.donorId = donorId;
-
-    const volunteerId = searchParams.get("volunteerId");
-    if (volunteerId) where.volunteerId = volunteerId;
-
     const donations = await prisma.donation.findMany({
-      where,
-      include: {
-        donor: { select: { id: true, name: true, phone: true, address: true } },
-        volunteer: { select: { id: true, name: true, phone: true } },
-        ngo: { select: { id: true, name: true } },
-      },
+      where: { donorId: user.id },
       orderBy: { createdAt: "desc" },
     });
 
@@ -50,11 +31,9 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const user = await getUserFromRequest();
-    if (!user) return unauthorized();
-
-    if (user.role !== "DONOR") {
-      return forbidden("Only donors can create donations");
+    const user = JSON.parse(req.headers.get("x-user") || "{}");
+    if (!user?.id) {
+      return badRequest("Missing user in x-user header");
     }
 
     const body = await req.json();
@@ -69,8 +48,13 @@ export async function POST(req: Request) {
     const donation = await prisma.donation.create({
       data: {
         ...rest,
-        packaging: JSON.stringify(packaging), // SQLite stores as JSON string
-        donorId: user.userId,
+        dietary: rest.dietary ?? "Veg",
+        shelfLife: rest.shelfLife ?? "6h",
+        pickupSlot: rest.pickupSlot ?? "Not specified",
+        locationName: rest.locationName ?? rest.location,
+        packaging: JSON.stringify(packaging),
+        status: "PENDING_APPROVAL",
+        donorId: user.id,
       },
     });
 

@@ -7,40 +7,23 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserFromRequest } from "@/lib/auth";
 import { unauthorized, serverError } from "@/lib/errors";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    // 1. Check if the user is logged in (has a valid JWT cookie)
-    const tokenPayload = await getUserFromRequest();
-    if (!tokenPayload) {
+    const userHeader = JSON.parse(req.headers.get("x-user") || "{}");
+    if (!userHeader.id) {
       return unauthorized();
     }
 
-    // 2. Fetch the full user profile from the database
     const user = await prisma.user.findUnique({
-      where: { id: tokenPayload.userId },
+      where: { id: userHeader.id },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        phone: true,
-        address: true,
-        avatar: true,
-        vehicle: true,
-        availability: true,
-        preferences: true,
-        isActive: true,
         createdAt: true,
-        // Computed stats
-        _count: {
-          select: {
-            donationsMade: true,
-            deliveries: true,
-          },
-        },
       },
     });
 

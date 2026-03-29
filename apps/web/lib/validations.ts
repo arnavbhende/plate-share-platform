@@ -6,7 +6,7 @@ export const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["DONOR", "NGO", "VOLUNTEER"]).optional().default("DONOR"),
+  role: z.enum(["DONOR", "NGO", "VOLUNTEER"]),
 });
 
 export const loginSchema = z.object({
@@ -35,7 +35,14 @@ export const createDonationSchema = z.object({
 });
 
 export const updateDonationStatusSchema = z.object({
-  status: z.enum(["PENDING", "ACCEPTED", "IN_TRANSIT", "DELIVERED", "CANCELLED"]),
+  status: z.enum([
+    "PENDING_APPROVAL",
+    "APPROVED",
+    "REJECTED",
+    "ACCEPTED",
+    "PICKED",
+    "DELIVERED",
+  ]),
 });
 
 // ─── Profile Schema ──────────────────────────────────────────────────────────

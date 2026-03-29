@@ -1,66 +1,92 @@
-// =============================================================================
-// POST /api/auth/signup — Register a new user
-// =============================================================================
-
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, signToken, AUTH_COOKIE } from "@/lib/auth";
 import { signupSchema } from "@/lib/validations";
-import { validationError, badRequest, serverError } from "@/lib/errors";
 
 export async function POST(req: Request) {
   try {
-    // 1. Parse and validate the request body
+    console.log("DATABASE_URL loaded:", process.env.DATABASE_URL);
+
+    // Prisma connectivity probe for debugging initialization/connection issues.
+    const userCount = await prisma.user.count();
+    console.log("Current user count:", userCount);
+
     const body = await req.json();
+    console.log("Signup request body:", body);
+
+    const { name, email, password, role } = body ?? {};
+
+    if (!name || !email || !password || !role) {
+      return NextResponse.json(
+        { error: "All fields are required" },
+        { status: 400 }
+      );
+    }
+
     const parsed = signupSchema.safeParse(body);
 
     if (!parsed.success) {
-      return validationError(parsed.error);
+      const firstIssue = parsed.error.issues[0];
+      const message = firstIssue
+        ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+        : "Invalid request data";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const { name, email, password, role } = parsed.data;
+    const payload = parsed.data;
 
-    // 2. Check if a user with this email already exists
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return badRequest("An account with this email already exists");
+    const existingUser = await prisma.user.findUnique({
+      where: { email: payload.email },
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "User already exists" },
+        { status: 400 }
+      );
     }
 
-    // 3. Hash the password (never store plain passwords!)
-    const passwordHash = await hashPassword(password);
-
-    // 4. Create the user in the database
     const user = await prisma.user.create({
-      data: { name, email, passwordHash, role },
-    });
-
-    // 5. Create a JWT token so the user is immediately logged in
-    const token = signToken({ userId: user.id, role: user.role });
-
-    // 6. Set the token as an HttpOnly cookie (secure, can't be read by JavaScript)
-    const response = NextResponse.json(
-      {
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
+      data: {
+        name: payload.name,
+        email: payload.email,
+        password: payload.password,
+        role: payload.role,
       },
-      { status: 201 }
-    );
-
-    response.cookies.set(AUTH_COOKIE, token, {
-      httpOnly: true,        // JavaScript can't read this cookie
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: "/",
     });
 
-    return response;
+    return NextResponse.json({ success: true, user }, { status: 201 });
   } catch (error) {
-    console.error("[SIGNUP ERROR]", error);
-    return serverError("Failed to create account");
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      console.error("🔥 SIGNUP ERROR: Prisma initialization failed", error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: String(error),
+        },
+        { status: 500 }
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { success: false, error: "User already exists" },
+        { status: 400 }
+      );
+    }
+
+    console.error("🔥 SIGNUP ERROR:", error);
+    console.error("FULL ERROR:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: String(error),
+      },
+      { status: 500 }
+    );
   }
 }

@@ -117,27 +117,29 @@ export default function PostDonationPage() {
     setPosting(true);
     setPostError("");
     try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!user?.id) {
+        setPostError("Please log in before posting a donation");
+        setPosting(false);
+        return;
+      }
+
       const pickupTime = form.pickupDate
         ? new Date(form.pickupDate + "T12:00:00").toISOString()
         : new Date().toISOString();
 
       const res = await fetch("/api/donations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-user": JSON.stringify(user),
+        },
         body: JSON.stringify({
           title: form.foodName,
           category: form.category,
-          dietary: form.dietary,
-          description: form.description,
           servings: form.servings,
-          packaging: form.packaging,
-          shelfLife: form.shelfLife === "custom" ? form.customShelfLife + "h" : form.shelfLife,
-          handling: form.handling,
           pickupTime,
-          pickupSlot: form.pickupSlot,
           location: form.locationAddress,
-          locationName: form.locationName,
-          pickupInstructions: form.pickupInstructions,
         }),
       });
 

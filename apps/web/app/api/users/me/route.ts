@@ -5,9 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserFromRequest } from "@/lib/auth";
-import { updateProfileSchema } from "@/lib/validations";
-import { unauthorized, validationError, serverError } from "@/lib/errors";
+import { badRequest, unauthorized, serverError } from "@/lib/errors";
 
 /**
  * GET /api/users/me
@@ -16,44 +14,25 @@ import { unauthorized, validationError, serverError } from "@/lib/errors";
  *   - Computed stats (total deliveries, total donations made)
  *   - Average rating (computed from delivered donations)
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const tokenPayload = await getUserFromRequest();
-    if (!tokenPayload) return unauthorized();
+    const userHeader = JSON.parse(req.headers.get("x-user") || "{}");
+    if (!userHeader.id) return unauthorized();
 
     const user = await prisma.user.findUnique({
-      where: { id: tokenPayload.userId },
+      where: { id: userHeader.id },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        phone: true,
-        address: true,
-        avatar: true,
-        vehicle: true,
-        availability: true,
-        preferences: true,
-        isActive: true,
         createdAt: true,
-        _count: {
-          select: {
-            donationsMade: true,
-            deliveries: { where: { status: "DELIVERED" } },
-          },
-        },
       },
     });
 
     if (!user) return unauthorized("User not found");
 
-    return NextResponse.json({
-      user: {
-        ...user,
-        totalDonations: user._count.donationsMade,
-        totalDeliveries: user._count.deliveries,
-      },
-    });
+    return NextResponse.json({ user });
   } catch (error) {
     console.error("[GET PROFILE ERROR]", error);
     return serverError();
@@ -67,30 +46,33 @@ export async function GET() {
  */
 export async function PATCH(req: Request) {
   try {
-    const tokenPayload = await getUserFromRequest();
-    if (!tokenPayload) return unauthorized();
+    const userHeader = JSON.parse(req.headers.get("x-user") || "{}");
+    if (!userHeader.id) return unauthorized();
 
     const body = await req.json();
-    const parsed = updateProfileSchema.safeParse(body);
+    const data: Record<string, string> = {};
 
-    if (!parsed.success) {
-      return validationError(parsed.error);
+    if (typeof body.name === "string" && body.name.trim()) {
+      data.name = body.name.trim();
+    }
+
+    if (typeof body.role === "string" && body.role.trim()) {
+      data.role = body.role.trim();
+    }
+
+    if (Object.keys(data).length === 0) {
+      return badRequest("Provide at least one field to update");
     }
 
     const updated = await prisma.user.update({
-      where: { id: tokenPayload.userId },
-      data: parsed.data,
+      where: { id: userHeader.id },
+      data,
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        phone: true,
-        address: true,
-        vehicle: true,
-        availability: true,
-        preferences: true,
-        isActive: true,
+        createdAt: true,
       },
     });
 

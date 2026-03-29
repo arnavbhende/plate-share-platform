@@ -33,7 +33,10 @@ export default function SignupPage() {
         return;
       }
 
-      // After signup, redirect to role-select
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+
       router.push("/role-select");
     } catch {
       setError("Network error. Please try again.");

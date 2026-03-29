@@ -29,10 +29,20 @@ export default function AvailablePickups() {
 
   async function fetchPickups() {
     try {
-      const res = await fetch("/api/donations?status=PENDING");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!user?.id) {
+        setPickups([]);
+        return;
+      }
+
+      const res = await fetch("/api/volunteer/available", {
+        headers: {
+          "x-user": JSON.stringify(user),
+        },
+      });
       if (res.ok) {
         const data = await res.json();
-        setPickups(data.donations);
+        setPickups(data.pickups || []);
       }
     } catch (err) {
       console.error("Failed:", err);
@@ -44,10 +54,21 @@ export default function AvailablePickups() {
   async function handleAccept(id: string) {
     setAccepting(id);
     try {
-      const res = await fetch(`/api/donations/${id}/accept`, { method: "POST" });
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!user?.id) {
+        alert("Please log in as a volunteer");
+        setAccepting(null);
+        return;
+      }
+
+      const res = await fetch(`/api/donations/${id}/accept`, {
+        method: "POST",
+        headers: {
+          "x-user": JSON.stringify(user),
+        },
+      });
       if (res.ok) {
-        // Remove from available list
-        setPickups((prev) => prev.filter((p) => p.id !== id));
+        await fetchPickups();
       } else {
         const data = await res.json();
         alert(data.error || "Failed to accept");
@@ -147,7 +168,7 @@ export default function AvailablePickups() {
                     disabled={accepting === pickup.id}
                     className="py-3 text-sm font-bold"
                   >
-                    {accepting === pickup.id ? "Accepting..." : "Accept Task"}
+                    {accepting === pickup.id ? "Accepting..." : "Accept Pickup"}
                   </Button>
                 </div>
               </div>
